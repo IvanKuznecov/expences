@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getCategories, getAllTransactions, saveTransactions, type Category, type Transaction } from '../lib/db';
 import { formatCurrency, cn } from '../lib/utils';
-import { HelpCircle, Check, AlertTriangle } from 'lucide-react';
+import { HelpCircle, Check, AlertTriangle, AlertCircle, Plus, Search, Tag } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 export function Uncategorized() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Filter State
+    const [selectedMonth, setSelectedMonth] = useState<string>('all');
 
     useEffect(() => {
         load();
@@ -38,18 +42,49 @@ export function Uncategorized() {
         }
     };
 
+    // Derived Data: Available Months from Uncategorized Transactions
+    const availableMonths = useMemo(() => {
+        const months = new Set<string>();
+        transactions.forEach(t => {
+            months.add(t.date.substring(0, 7)); // YYYY-MM
+        });
+        return Array.from(months).sort().reverse();
+    }, [transactions]);
+
+    // Derived Data: Filtered
+    const filteredTransactions = useMemo(() => {
+        return transactions
+            .filter(t => selectedMonth === 'all' || t.date.startsWith(selectedMonth))
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [transactions, selectedMonth]);
+
     if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500">
-            <header>
-                <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                    <HelpCircle className="w-8 h-8 text-orange-500" />
-                    Uncategorized Transactions
-                </h2>
-                <p className="text-gray-500 mt-2">
-                    {transactions.length} transactions need your attention.
-                </p>
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                        <AlertCircle className="w-8 h-8 text-amber-500" />
+                        Uncategorized Transactions
+                    </h2>
+                    <p className="text-gray-500 mt-2">
+                        {filteredTransactions.length} items need your attention.
+                    </p>
+                </div>
+
+                {transactions.length > 0 && (
+                    <select
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 px-3 py-2"
+                    >
+                        <option value="all">All Months</option>
+                        {availableMonths.map(m => (
+                            <option key={m} value={m}>{format(parseISO(m + '-01'), 'MMMM yyyy')}</option>
+                        ))}
+                    </select>
+                )}
             </header>
 
             {transactions.length === 0 ? (
@@ -58,9 +93,14 @@ export function Uncategorized() {
                     <h3 className="text-xl font-bold text-gray-900">All caught up!</h3>
                     <p className="text-gray-500">No uncategorized transactions found.</p>
                 </div>
+            ) : filteredTransactions.length === 0 ? (
+                <div className="p-12 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                    <h3 className="text-xl font-bold text-gray-900">No items for this month</h3>
+                    <p className="text-gray-500">Select another month or "All Months" to see items.</p>
+                </div>
             ) : (
                 <div className="space-y-4">
-                    {transactions.map(tx => (
+                    {filteredTransactions.map(tx => (
                         <div key={tx.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 transition-all hover:shadow-md">
                             <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
                                 <div className="flex-1 space-y-2">
@@ -76,12 +116,10 @@ export function Uncategorized() {
                                         <p className="text-gray-600 mt-1">{tx.purpose}</p>
                                     </div>
 
-                                    {/* Full details expansion or just show all fields if relevant? User asked for full comment visibility. */}
-                                    {/* Let's show specific fields if present and not redundant */}
                                     <div className="text-xs text-gray-400 space-y-1 pt-2 font-mono">
                                         {Object.entries(tx.originalRow).map(([k, v]) => {
                                             if (!v || ['Value date', 'Amount', 'Currency', 'Beneficiary/ Payer', 'Purpose of payment', 'Beneficiary/payer\'s account number'].includes(k)) return null;
-                                            return <div key={k}><span className="font-semibold">{k}:</span> {v}</div>
+                                            return <div key={k}><span className="font-semibold">{k}:</span> {v as any}</div>
                                         })}
                                     </div>
                                 </div>
