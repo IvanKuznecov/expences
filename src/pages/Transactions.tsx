@@ -10,7 +10,7 @@ export function Transactions() {
     const [categories, setCategories] = useState<Map<string, Category>>(new Map());
 
     // Filter States
-    const [selectedMonth, setSelectedMonth] = useState<string>('all');
+    const [selectedMonth, setSelectedMonth] = useState<string>('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
     // UI States
@@ -44,12 +44,19 @@ export function Transactions() {
         return Array.from(months).sort().reverse();
     }, [transactions]);
 
+    // Set default month
+    useEffect(() => {
+        if (!selectedMonth && availableMonths.length > 0) {
+            setSelectedMonth(availableMonths[0]);
+        }
+    }, [availableMonths, selectedMonth]);
+
     // Derived Data: Filtered & Sorted Transactions
     const processedTransactions = useMemo(() => {
         let result = [...transactions];
 
         // 1. Filter by Month
-        if (selectedMonth !== 'all') {
+        if (selectedMonth) {
             result = result.filter(t => t.date.startsWith(selectedMonth));
         }
 
@@ -121,7 +128,6 @@ export function Transactions() {
                         onChange={(e) => setSelectedMonth(e.target.value)}
                         className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 px-3 py-2"
                     >
-                        <option value="all">All Months</option>
                         {availableMonths.map(m => (
                             <option key={m} value={m}>{format(parseISO(m + '-01'), 'MMMM yyyy')}</option>
                         ))}

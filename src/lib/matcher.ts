@@ -16,10 +16,10 @@ export function applyMappings(transaction: Transaction, mappings: Mapping[], ign
         return { match: 'INTERNAL' };
     }
 
-    // 2. Global Rule: Positive transactions -> IN
-    if (transaction.type === 'C') {
-        return { match: 'IN' };
-    }
+    // 2. Removed Global Rule: Positive transactions -> IN
+    // We want user mappings to take precedence. 
+    // Fallback to IN is handled in Import/Categories logic.
+
 
     const matches = new Set<string>();
 
